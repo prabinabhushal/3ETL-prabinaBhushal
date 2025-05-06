@@ -91,6 +91,18 @@ where n.service_code::text like '%11%'
 group by n.provider_group_id,p.tin,n.service_code
 limit 10;
 
+SELECT 
+  n.provider_group_id,
+  p.tin,
+  AVG(n.negotiated_rate) AS avg_nego
+FROM provider_table AS p
+JOIN in_network n 
+  ON p.provider_group_id = n.provider_group_id
+JOIN LATERAL UNNEST(n.service_code) AS sc(code) 
+  ON code LIKE '%11%'  -- filters codes containing '11'
+GROUP BY n.provider_group_id, p.tin
+LIMIT 10;
+
 
 
 
