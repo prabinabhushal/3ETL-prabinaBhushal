@@ -59,11 +59,11 @@ LIMIT 20;
 
 
 WITH BILLING_CTE AS (
-    SELECT provider_group_id
-    FROM in_network
-    WHERE billing_code = '99213'
-    GROUP BY provider_group_id
-    HAVING COUNT(*) > 2
+SELECT provider_group_id
+FROM in_network
+WHERE billing_code = '99213'
+GROUP BY provider_group_id
+HAVING COUNT(*) > 2
 )
 SELECT c.provider_group_id, m.billing_code,p.npi
 FROM BILLING_CTE AS c
@@ -76,21 +76,18 @@ LIMIT 20;
 --4.List the top 3 provider_group_id values with the highest total negotiated_rate for procedures where
 --negotiation_type is negotiated, including the tin from the provider table, ordered by total rate descending.
 
-SELECT p.provider_group_id,n.negotiated_type, n.negotiated_rate, sum(n.negotiated_rate) as total_rate, p.tin
-FROM provider_table p
-JOIN in_network n ON p.provider_group_id = n.provider_group_id
-GROUP BY p.provider_group_id, n.negotiated_type, n.negotiated_rate,p.tin 
-HAVING n.negotiated_type = 'negotiated'
-LIMIT 3;
 
-
-SELECT r.provider_group_id, SUM(r.negotiated_rate) AS total_rate, p.tin
-FROM in_network AS r
+WITH sum_cte as( 
+ SELECT provider_group_id ,SUM(negotiated_rate) AS total_rate
+ FROM in_network
+ WHERE negotiated_type = 'negotiated'
+ GROUP BY provider_group_id
+ )
+SELECT r.provider_group_id, r.total_rate, p.tin
+FROM sum_cte AS r
 JOIN provider_table AS p
 ON r.provider_group_id = p.provider_group_id
-WHERE r.negotiated_type = 'negotiated'
-GROUP BY r.provider_group_id, p.tin
-ORDER BY total_rate DESC
+ORDER BY r.total_rate DESC
 LIMIT 3;
 
 
@@ -99,39 +96,25 @@ LIMIT 3;
 --contains 11, and include the tin from the provider table limit 10.
 
 
-SELECT r.provider_group_id, AVG(r.negotiated_rate) AS avg_rate, p.tin
-FROM in_network AS r
-JOIN provider_table AS p
-ON r.provider_group_id = p.provider_group_id
-WHERE 11 = ANY(r.service_code)
-GROUP BY r.provider_group_id, p.tin
-LIMIT 10;
+WITH SER_CTE AS (
+SELECT provider_group_id, AVG(negotiated_rate) AS avg_rate
+FROM in_network 
+WHERE 11 = ANY(service_code)
+GROUP BY provider_group_id
+)
 
-select n.provider_group_id,p.tin,avg(negotiated_rate) as avg_nego,
-unnest(n.service_code) as serv_code
-from   provider_table as p
-join in_network n  on p.provider_group_id=n.provider_group_id
-where n.service_code::text like '%11%'
-group by n.provider_group_id,p.tin,n.service_code
-limit 10;
-
-SELECT 
-  n.provider_group_id,
-  p.tin,
-  AVG(n.negotiated_rate) AS avg_nego
-FROM provider_table AS p
-JOIN in_network n 
-  ON p.provider_group_id = n.provider_group_id
-JOIN LATERAL UNNEST(n.service_code) AS sc(code) 
-  ON code LIKE '%11%'  -- filters codes containing '11'
-GROUP BY n.provider_group_id, p.tin
+SELECT n.provider_group_id,p.tin, n.avg_rate
+FROM SER_CTE as n
+JOIN provider_table as p  on p.provider_group_id=n.provider_group_id
 LIMIT 10;
 
 
 
 
 
---Question1: How can you use a CTE to calculate the average negotiation rate for each provider group and then
+
+
+--Question6: How can you use a CTE to calculate the average negotiation rate for each provider group and then
 --join this with the provider table to list providers (by NPI and TIN) in groups where the average negotiation rate exceeds 250?
 
 --Hint: Use a CTE to compute the average negotiated rate per provider_group_id. Then, join the CTE with 
