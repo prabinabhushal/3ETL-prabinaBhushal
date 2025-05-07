@@ -11,7 +11,7 @@ CREATE INDEX provider_table_in_network on provider_table(provider_group_id);
 
 
 
-EXPLAIN ANALYZE SELECT n.provider_group_id, n.billing_code, n.negotiated_rate , p.tin
+EXPLAIN ANALYZE SELECT n.provider_group_id, n.billing_code, n.negotiated_rate , p.tin,billing_code_type
 FROM in_network as n
 JOIN provider_table as p 
 ON p.provider_group_id = n.provider_group_id
@@ -25,11 +25,18 @@ LIMIT 20;
 
 
 
-SELECT DISTINCT r.provider_group_id, p.npi
-FROM in_network AS r
+SELECT DISTINCT n.provider_group_id, p.npi,n.billing_class
+FROM in_network AS n
 JOIN provider_table AS p
- ON r.provider_group_id = p.provider_group_id
-WHERE r.billing_class = 'professional'
+ ON n.provider_group_id = p.provider_group_id
+WHERE n.billing_class = 'professional'
+LIMIT 10;
+
+SELECT DISTINCT ON (n.provider_group_id) n.provider_group_id, p.npi,n.billing_class
+FROM in_network AS n
+JOIN provider_table AS p
+ ON n.provider_group_id = p.provider_group_id
+WHERE n.billing_class = 'professional'
 LIMIT 10;
 
 
@@ -37,13 +44,31 @@ LIMIT 10;
 --3.Identify provider_group_id values with more than 10 records in the rate table where the billing_code is '99213' , 
 --and show the corresponding npi from the provider table.
 
+WITH BILLING_CTE AS (
+ SELECT provider_group_id 
+ from in_network
+ WHERE billing_code = '99213'
+ GROUP BY provider_group_id
+ HAVING count(provider_group_id)>10
+)
+SELECT c.provider_group_id, m.billing_code ,  p.npi
+FROM BILLING_CTE as c
+JOIN provider_table as p ON p.provider_group_id = c.provider_group_id
+JOIN in_network as m ON m.provider_group_id = c.provider_group_id
+LIMIT 20;
 
-SELECT n.provider_group_id, n.billing_code ,  p.npi
-FROM provider_table p
-JOIN in_network n ON p.provider_group_id = n.provider_group_id
-WHERE billing_code = '99213'
-GROUP BY n.provider_group_id,n.billing_code , p.npi
-HAVING count(n.provider_group_id)>10
+
+WITH BILLING_CTE AS (
+    SELECT provider_group_id
+    FROM in_network
+    WHERE billing_code = '99213'
+    GROUP BY provider_group_id
+    HAVING COUNT(*) > 2
+)
+SELECT c.provider_group_id, m.billing_code,p.npi
+FROM BILLING_CTE AS c
+JOIN provider_table AS p ON p.provider_group_id = c.provider_group_id
+JOIN in_network AS m ON m.provider_group_id = c.provider_group_id AND m.billing_code = '99213'
 LIMIT 20;
 
 
@@ -56,7 +81,6 @@ FROM provider_table p
 JOIN in_network n ON p.provider_group_id = n.provider_group_id
 GROUP BY p.provider_group_id, n.negotiated_type, n.negotiated_rate,p.tin 
 HAVING n.negotiated_type = 'negotiated'
-ORDER BY sum(n.negotiated_rate) DESC
 LIMIT 3;
 
 
