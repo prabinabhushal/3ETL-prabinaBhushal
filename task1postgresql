@@ -1,0 +1,19 @@
+CREATE TABLE ORDER_DEMO(
+	order_id integer,
+	customer_id integer,
+	order_date date,
+	product_category varchar(50),
+	amount numeric(50),
+	payment_method varchar(50)
+);
+
+
+SELECT COUNT(*) FROM ORDER_DEMO;
+
+SELECT order_id from ORDER_DEMO;
+
+SELECT product_category FROM ORDER_DEMO;
+
+SELECT product_category, count(*) as total_order_count, sum(amount) as total_amount_paid 
+from ORDER_DEMO
+group by product_category;
